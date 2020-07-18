@@ -1,0 +1,36 @@
+version: '3.0'
+services:
+  darkice:
+    image: darkice:rpi3
+    container_name: darkice
+    volumes:
+      - ./volumes/darkice.cfg:/etc/darkice.cfg:ro
+    privileged: true
+    restart: unless-stopped
+
+  icecast:
+    image: icecast:rpi3
+    container_name: icecast
+    depends_on:
+      - darkice
+    ports:
+      - "8000:8000"
+    environment:
+      - "ICECAST_HOSTNAME=localhost"
+      - "ICECAST_SOURCE_PASSWORD=hackme"
+      - "ICECAST_ADMIN_PASSWORD=hackme"
+      - "ICECAST_RELAY_PASSWORD=hackme"
+      - "ICECAST_ADMIN_USERNAME=admin"
+    restart: unless-stopped
+
+  ffmpeg:
+    image: linuxserver/ffmpeg:arm32v7-latest
+    container_name: ffmpeg
+    depends_on:
+      - icecast
+    volumes:
+      - ./volumes/data:/data
+    restart: unless-stopped
+    working_dir: /data
+    command: -i http://icecast:8000/rpi.mp3 -codec copy -f segment -segment_format_options "id3v2_version=0:write_id3v1=0:write_xing=0" -segment_list segment_list.txt -segment_list_type flat -segment_time 600 -strftime 1 %Y-%m-%d_%H-%M-%S.mp3
+
